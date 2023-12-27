@@ -19,7 +19,8 @@ import {
   TableContainer,
   TablePagination,
   Box,
-  Alert
+  Alert,
+  Button
 } from "@mui/material";
 // components
 import Label from "~/components/label";
@@ -32,6 +33,7 @@ import { valueLabelFormat } from "~/utils/formatNumber";
 import dogApi from "~/apis/modules/dog.api";
 import { toast } from "react-toastify";
 import { fDateTime } from "~/utils/formatTime";
+import { CSVLink } from "react-csv";
 
 // ----------------------------------------------------------------------
 
@@ -352,6 +354,16 @@ export default function ProductList() {
       {
         openEditModal && <EditProductModal open={openEditModal} setOpen={setOpenEditModal} id={selectId} />
       }
+      <Button color="warning" variant="outlined">
+        <CSVLink
+          data={dogs}
+          filename={"my-dog.csv"}
+
+          target="_blank"
+        >
+          Export file excel
+        </CSVLink>
+      </Button>
     </>
   );
 }
