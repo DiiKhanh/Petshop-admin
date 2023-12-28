@@ -39,6 +39,7 @@ import { fDateTime } from "~/utils/formatTime";
 const TABLE_HEAD = [
   { id: "name", label: "Username", alignRight: false },
   { id: "fullname", label: "Họ tên", alignRight: false },
+  { id: "email", label: "Email", alignRight: false },
   { id: "phone", label: "Số điện thoại", alignRight: false },
   { id: "isVerified", label: "Verified", alignRight: false },
   { id: "status", label: "Status", alignRight: false },
@@ -249,6 +250,7 @@ export default function UserPage() {
                         </TableCell>
 
                         <TableCell align="left">{`${firstName} ${lastName}`}</TableCell>
+                        <TableCell align="left">{`${email}`}</TableCell>
 
                         <TableCell align="left">{phoneNumber}</TableCell>
 
