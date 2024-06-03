@@ -27,10 +27,12 @@ export default function LoginForm() {
     setIsLoginRequest(true);
     const { response, err } = await authApi.signin(data);
     setIsLoginRequest(false);
-    if (response) {
+    if (response.role.some(role => role.toLowerCase() === "admin")) {
       dispatch(setUser(response));
       toast.success("Đăng nhập thành công");
       navigate("/");
+    } else if (response) {
+      setErrorMessage("Không có quyền truy cập!");
     }
     if (err) {
       setErrorMessage(err.message);
@@ -68,7 +70,9 @@ export default function LoginForm() {
       </Stack>
 
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ my: 2 }}>
-        <Link variant="subtitle2" underline="hover">
+        <Link variant="subtitle2" underline="hover" sx={{ cursor:"pointer" }}
+          onClick={() => navigate("/forgot-password")}
+        >
           Quên mật khẩu
         </Link>
       </Stack>

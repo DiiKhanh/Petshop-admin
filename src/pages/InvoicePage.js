@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 import { filter } from "lodash";
 import { sentenceCase } from "change-case";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 // @mui
 import {
   Card,
@@ -9,7 +9,6 @@ import {
   Stack,
   Paper,
   Avatar,
-  Button,
   Popover,
   Checkbox,
   TableRow,
@@ -20,7 +19,9 @@ import {
   Typography,
   IconButton,
   TableContainer,
-  TablePagination
+  TablePagination,
+  Box,
+  Alert
 } from "@mui/material";
 // components
 import Label from "../components/label";
@@ -29,10 +30,10 @@ import Scrollbar from "../components/scrollbar";
 // sections
 import { InvoiceListHead, InvoiceListToolbar } from "../sections/@dashboard/invoice";
 // mock
-import invoiceApi from "~/apis/modules/invoice.api";
-import { toast } from "react-toastify";
 import { fDateTime } from "~/utils/formatTime";
 import EditInvoiceModal from "~/sections/@dashboard/invoice/EditInvoiceModal";
+import { useGetAllInvoice } from "~/hooks/invoice/useInvoice";
+import Loading from "~/components/Loading";
 
 // ----------------------------------------------------------------------
 
@@ -66,8 +67,8 @@ function getComparator(order, orderBy) {
 }
 
 function applySortFilter(array, comparator, query) {
-  const stabilizedThis = array.map((el, index) => [el, index]);
-  stabilizedThis.sort((a, b) => {
+  const stabilizedThis = array?.map((el, index) => [el, index]);
+  stabilizedThis?.sort((a, b) => {
     const order = comparator(a[0], b[0]);
     if (order !== 0) return order;
     return a[1] - b[1];
@@ -75,13 +76,11 @@ function applySortFilter(array, comparator, query) {
   if (query) {
     return filter(array, (_user) => _user.name.toLowerCase().indexOf(query.toLowerCase()) !== -1);
   }
-  return stabilizedThis.map((el) => el[0]);
+  return stabilizedThis?.map((el) => el[0]);
 }
 
 export default function InvoicePage() {
   const [open, setOpen] = useState(null);
-
-  const [data, setData] = useState([]);
 
   const [page, setPage] = useState(0);
 
@@ -97,39 +96,8 @@ export default function InvoicePage() {
   const [openModal, setOpenModal] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
 
-  useEffect(() => {
-    const get = async () => {
-      try {
-        const { response, err }= await invoiceApi.getAll();
-        if (err) {
-          toast.error(err);
-        }
-        if (response) {
-          setData(response);
-        }
-      } catch (error) {
-        toast.error(error);
-      }
-    };
-    get();
-  }, []);
-
-  useEffect(() => {
-    const get = async () => {
-      try {
-        const { response, err }= await invoiceApi.getAll();
-        if (err) {
-          toast.error(err);
-        }
-        if (response.data) {
-          setData(response.data);
-        }
-      } catch (error) {
-        toast.error(error);
-      }
-    };
-    get();
-  }, [openModal]);
+  // fetch
+  const data = useGetAllInvoice();
 
   const handleOpenMenu = (id) => (event) => {
     setOpen(event.currentTarget);
@@ -148,7 +116,7 @@ export default function InvoicePage() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = data.map((n) => n.id);
+      const newSelecteds = data?.data?.map((n) => n.id);
       setSelected(newSelecteds);
       return;
     }
@@ -184,11 +152,11 @@ export default function InvoicePage() {
     setFilterName(event.target.value);
   };
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data.length) : 0;
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data?.data.length) : 0;
 
-  const filteredUsers = applySortFilter(data, getComparator(order, orderBy), filterName);
+  const filteredUsers = applySortFilter(data?.data, getComparator(order, orderBy), filterName);
 
-  const isNotFound = !filteredUsers.length && !!filterName;
+  const isNotFound = !filteredUsers?.length && !!filterName;
 
   return (
     <>
@@ -201,116 +169,152 @@ export default function InvoicePage() {
           <Typography variant="h4" gutterBottom>
             Quản lý hóa đơn
           </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
+          {/* <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}>
             Thêm hóa đơn
-          </Button>
+          </Button> */}
         </Stack>
 
         <Card>
-          <InvoiceListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
+          {
+            data.isLoading && <Box sx={{ marginTop: 2 }}>
+              <Loading />
+            </Box>
+          }
+          {
+            data.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+              <Alert severity="error" variant="outlined" >{data.error.message}</Alert>
+            </Box>
+          }
+          {
+            data.isSuccess && data?.data?.length > 0 &&
+            <>
+              <InvoiceListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
 
-          <Scrollbar>
-            <TableContainer sx={{ minWidth: 800 }}>
-              <Table>
-                <InvoiceListHead
-                  order={order}
-                  orderBy={orderBy}
-                  headLabel={TABLE_HEAD}
-                  rowCount={data.length}
-                  numSelected={selected.length}
-                  onRequestSort={handleRequestSort}
-                  onSelectAllClick={handleSelectAllClick}
-                />
-                <TableBody>
-                  {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { id, name, payment, status, createAt, phoneNumber, user_id } = row;
-                    const selectedUser = selected.indexOf(id) !== -1;
+              <Scrollbar>
+                <TableContainer sx={{ minWidth: 800 }}>
+                  <Table>
+                    <InvoiceListHead
+                      order={order}
+                      orderBy={orderBy}
+                      headLabel={TABLE_HEAD}
+                      rowCount={data?.data.length}
+                      numSelected={selected.length}
+                      onRequestSort={handleRequestSort}
+                      onSelectAllClick={handleSelectAllClick}
+                    />
+                    <TableBody>
+                      {filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
+                        const { id, name, payment, status, createAt, phoneNumber, user_id } = row;
+                        const selectedUser = selected.indexOf(id) !== -1;
 
-                    return (
-                      <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
-                        <TableCell padding="checkbox">
-                          <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, id)} />
-                        </TableCell>
+                        return (
+                          <TableRow hover key={id} tabIndex={-1} role="checkbox" selected={selectedUser}>
+                            <TableCell padding="checkbox">
+                              <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, id)} />
+                            </TableCell>
 
-                        <TableCell align="left">
+                            <TableCell align="left">
                           # {id}
-                        </TableCell>
+                            </TableCell>
 
-                        <TableCell align="left">
-                          <Stack direction="row" alignItems="center" spacing={2}>
-                            <Avatar alt={name} src={name} />
-                            <Typography variant="subtitle2" noWrap>
-                              {name}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
+                            <TableCell align="left">
+                              <Stack direction="row" alignItems="center" spacing={2}>
+                                <Avatar alt={name} src={name} />
+                                <Typography variant="subtitle2" noWrap>
+                                  {name}
+                                </Typography>
+                              </Stack>
+                            </TableCell>
 
-                        <TableCell align="left">
-                          {user_id}
-                        </TableCell>
+                            <TableCell align="left">
+                              {user_id}
+                            </TableCell>
 
-                        <TableCell align="left" sx={{ textTransform:"capitalize" }}> <Label color={(payment === "chưa thanh toán" && "error") || "success"}>{sentenceCase(payment)}</Label></TableCell>
+                            <TableCell align="left" sx={{ textTransform:"capitalize" }}> <Label color={(payment === "chưa thanh toán" && "error") || "success"}>{sentenceCase(payment)}</Label></TableCell>
 
-                        <TableCell align="left">{phoneNumber}</TableCell>
+                            <TableCell align="left">{phoneNumber}</TableCell>
 
-                        <TableCell align="left">
-                          <Label color={(status === "Đang lấy hàng" && "info") || "success"}
-                            variant="outlined"
-                          >{sentenceCase(status)}</Label>
-                        </TableCell>
-                        <TableCell align="left">{fDateTime(createAt)}</TableCell>
+                            <TableCell align="left">
+                              <Label color={(status === "Đang lấy hàng" && "info") || "success"}
+                                variant="outlined"
+                              >{sentenceCase(status)}</Label>
+                            </TableCell>
+                            <TableCell align="left">{fDateTime(createAt)}</TableCell>
 
-                        <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={handleOpenMenu(id)}>
-                            <Iconify icon={"eva:more-vertical-fill"} />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {emptyRows > 0 && (
-                    <TableRow style={{ height: 53 * emptyRows }}>
-                      <TableCell colSpan={6} />
-                    </TableRow>
-                  )}
-                </TableBody>
+                            <TableCell align="right">
+                              <IconButton size="large" color="inherit" onClick={handleOpenMenu(id)}>
+                                <Iconify icon={"eva:more-vertical-fill"} />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {emptyRows > 0 && (
+                        <TableRow style={{ height: 53 * emptyRows }}>
+                          <TableCell colSpan={6} />
+                        </TableRow>
+                      )}
+                    </TableBody>
 
-                {isNotFound && (
-                  <TableBody>
-                    <TableRow>
-                      <TableCell align="center" colSpan={6} sx={{ py: 3 }}>
-                        <Paper
-                          sx={{
-                            textAlign: "center"
-                          }}
-                        >
-                          <Typography variant="h6" paragraph>
+                    {isNotFound && (
+                      <TableBody>
+                        <TableRow>
+                          <TableCell align="center" colSpan={12} sx={{ py: 3 }}>
+                            <Paper
+                              sx={{
+                                textAlign: "center"
+                              }}
+                            >
+                              <Typography variant="h6" paragraph>
                             Not found
-                          </Typography>
+                              </Typography>
 
-                          <Typography variant="body2">
+                              <Typography variant="body2">
                             No results found for &nbsp;
-                            <strong>&quot;{filterName}&quot;</strong>.
-                            <br /> Try checking for typos or using complete words.
-                          </Typography>
-                        </Paper>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                )}
-              </Table>
-            </TableContainer>
-          </Scrollbar>
+                                <strong>&quot;{filterName}&quot;</strong>.
+                                <br /> Try checking for typos or using complete words.
+                              </Typography>
+                            </Paper>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    )}
+                  </Table>
+                </TableContainer>
+              </Scrollbar>
 
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={data.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={data?.data.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
+            </>
+          }
+          {
+            data.isSuccess && data?.data.length === 0 && <>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell align="center" colSpan={12} sx={{ py: 3 }}>
+                      <Paper
+                        sx={{
+                          textAlign: "center"
+                        }}
+                      >
+                        <Typography variant="h6" paragraph>
+                          Chưa có thông tin Invoice
+                        </Typography>
+                      </Paper>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </>
+          }
         </Card>
       </Container>
 
@@ -332,7 +336,10 @@ export default function InvoicePage() {
           }
         }}
       >
-        <MenuItem onClick={() => setOpenModal(true)}>
+        <MenuItem onClick={() => {
+          setOpenModal(true);
+          handleCloseMenu();
+        }}>
           <Iconify icon={"eva:edit-fill"} sx={{ mr: 2 }}
           />
           Chỉnh sửa

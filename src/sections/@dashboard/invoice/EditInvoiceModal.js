@@ -6,11 +6,10 @@ import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import LoadingButton from "@mui/lab/LoadingButton";
 import TextField from "@mui/material/TextField";
 import FormControl from "@mui/material/FormControl";
-import { toast } from "react-toastify";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormLabel from "@mui/material/FormLabel";
@@ -19,8 +18,11 @@ import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Label from "~/components/label";
 import { InvoiceSchema } from "~/configs/zod.config";
-import invoiceApi from "~/apis/modules/invoice.api";
 import { valueLabelFormat } from "~/utils/formatNumber";
+import { useEditInvoice, useGetInvoice } from "~/hooks/invoice/useInvoice";
+import Loading from "~/components/Loading";
+import { Alert } from "@mui/material";
+import { toast } from "react-toastify";
 
 
 const style = {
@@ -37,10 +39,11 @@ const style = {
 
 export default function EditInvoiceModal({ open, setOpen, id }) {
   const handleClose = () => setOpen(false);
-  const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [radio, setRadio] = useState("");
   const [radioPayment, setRadioPayment] = useState("");
+  // fetch data
+  const data = useGetInvoice(id);
 
 
   const {
@@ -49,37 +52,18 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
     handleSubmit
   } = useForm({ resolver: zodResolver(InvoiceSchema) });
 
-  useEffect(() => {
-    const get = async () => {
-      try {
-        const { response, err } = await invoiceApi.getById({ id });
-        if (err) {
-          toast.error(err);
-        }
-        if (response) {
-          setData(response);
-        }
-      } catch (error) {
-        toast.error(error);
-      }
-    };
-    get();
-  }, [id]);
-
-  // fetch data
+  const editInvoice = useEditInvoice(id);
   const handleEdit = async (dataForm) => {
     setIsLoading(true);
-    const form = { ...dataForm, id, payment: radioPayment || data.payment, status: radio || data.status };
-    const { response, err } = await invoiceApi.update(form);
+    const form = { ...dataForm, id, payment: radioPayment || data?.data?.payment, status: radio || data?.data?.status };
+    editInvoice.mutateAsync(form);
     setIsLoading(false);
-    if (response) {
-      setData(response);
-      toast.success("Chỉnh sửa thành công!");
-    }
-    if (err) {
-      toast.error("Có lỗi khi chỉnh sửa!!");
-    }
   };
+
+  if (editInvoice.isSuccess) {
+    toast.success("Chỉnh sửa thành công!");
+    setOpen(false);
+  }
 
   return (
     <div>
@@ -98,7 +82,17 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
         <Fade in={open}>
           <Box sx={style}>
             {
-              data && <Stack spacing={3}>
+              data.isLoading && <Box sx={{ marginTop: 2 }}>
+                <Loading />
+              </Box>
+            }
+            {
+              data.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+                <Alert severity="error" variant="outlined" >{data.error.message}</Alert>
+              </Box>
+            }
+            {
+              data.isSuccess && data.data && <Stack spacing={3}>
                 {/* bread */}
                 <div role="presentation">
                   <Breadcrumbs aria-label="breadcrumb">
@@ -109,10 +103,10 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                     <Typography color="inherit" fontSize={20}>
                       ID - # {id}
                     </Typography>
-                    <Label color={(data.status === "Đang lấy hàng" && "info") || "success"}
+                    <Label color={(data?.data.status === "Đang lấy hàng" && "info") || "success"}
                       variant="outlined"
-                    >{data.status}</Label>
-                    <Label color={(data.payment === "chưa thanh toán" && "error") || "success"}>{data.payment}</Label>
+                    >{data?.data.status}</Label>
+                    <Label color={(data?.data.payment === "chưa thanh toán" && "error") || "success"}>{data?.data.payment}</Label>
                   </Breadcrumbs>
                 </div>
                 {/* bread */}
@@ -137,7 +131,7 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                       }
                       error={touchedFields && errors?.name?.message !== undefined}
                       helperText={touchedFields && errors?.name?.message}
-                      defaultValue={data?.name}
+                      defaultValue={data?.data?.name}
                       fullWidth
                     />
                   </FormControl>
@@ -152,7 +146,7 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                       }
                       error={touchedFields && errors?.phoneNumber?.message !== undefined}
                       helperText={touchedFields && errors?.phoneNumber?.message}
-                      defaultValue={data?.phoneNumber}
+                      defaultValue={data?.data?.phoneNumber}
                       fullWidth
                     />
                   </FormControl>
@@ -167,7 +161,7 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                       }
                       error={touchedFields && errors?.email?.message !== undefined}
                       helperText={touchedFields && errors?.email?.message}
-                      defaultValue={data?.email}
+                      defaultValue={data?.data?.email}
                       fullWidth
                     />
                   </FormControl>
@@ -182,7 +176,7 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                       }
                       error={touchedFields && errors?.address?.message !== undefined}
                       helperText={touchedFields && errors?.address?.message}
-                      defaultValue={data?.address}
+                      defaultValue={data?.data?.address}
                       fullWidth
                     />
                   </FormControl>
@@ -193,7 +187,7 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                     </FormLabel>
                     <TextField variant="outlined"
                       disabled
-                      defaultValue={data.data?.map(obj => `${obj.id}: ${obj.name}`)?.join(", ")}
+                      defaultValue={data?.data.data?.map(obj => `${obj.id}: ${obj.name}`)?.join(", ")}
                       fullWidth
                     />
                     <FormLabel sx={{ mb:"10px", fontWeight:"bold" }}>
@@ -201,7 +195,7 @@ export default function EditInvoiceModal({ open, setOpen, id }) {
                     </FormLabel>
                     <TextField variant="outlined"
                       disabled
-                      defaultValue={valueLabelFormat(data?.total)}
+                      defaultValue={valueLabelFormat(data?.data?.total)}
                       fullWidth
                     />
                   </FormControl>

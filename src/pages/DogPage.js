@@ -25,19 +25,19 @@ export default function DogPage() {
   return (
     <>
       <Helmet>
-        <title> Dashboard: Products | Pet Shop </title>
+        <title> Pets | Pet Shop </title>
       </Helmet>
 
       <Container maxWidth="xl">
         <Typography variant="h4" sx={{ mb: 5 }}>
-          Quản lý sản phẩm
+          Quản lý thú cưng
         </Typography>
 
         <Stack direction="row" flexWrap="wrap-reverse" alignItems="center" justifyContent="space-between" sx={{ mb: 5 }}>
           <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />}
             onClick={() => setOpen(true)}
           >
-            Thêm sản phẩm
+            Nhập thú cưng
           </Button>
           <Stack direction="row" spacing={1} flexShrink={0} sx={{ my: 1 }}>
 

@@ -19,7 +19,7 @@ import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Label from "~/components/label";
 import { BookingSchema } from "~/configs/zod.config";
-import bookingApi from "~/apis/modules/booking.api";
+import { useEditBooking } from "./hooks/useBooking";
 
 
 const style = {
@@ -39,7 +39,6 @@ export default function EditModal({ open, setOpen, item }) {
   const [isLoading, setIsLoading] = useState(false);
   const [radio, setRadio] = useState("");
 
-
   const {
     register,
     formState: { errors, touchedFields },
@@ -48,19 +47,18 @@ export default function EditModal({ open, setOpen, item }) {
 
 
   // fetch data
+  const editBooking = useEditBooking(item.appointment_id);
   const handleEdit = async (dataForm) => {
     setIsLoading(true);
     const form = { ...dataForm, id: item?.appointment_id, status: radio };
-    const { response, err } = await bookingApi.update(form);
+    editBooking.mutateAsync(form);
     setIsLoading(false);
-    if (response) {
-      toast.success("Chỉnh sửa thành công!");
-      handleClose();
-    }
-    if (err) {
-      toast.error("Có lỗi khi chỉnh sửa!!");
-    }
   };
+
+  if (editBooking.isSuccess) {
+    toast.success("Chỉnh sửa thành công!");
+    setOpen(false);
+  }
 
   return (
     <div>

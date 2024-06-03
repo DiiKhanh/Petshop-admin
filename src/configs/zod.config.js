@@ -19,6 +19,21 @@ export const ChangePasswordSchema = z.object({
   path: ["newPassword"]
 });
 
+export const ResetPasswordSchema = z.object({
+  token: z.string()
+    .min(1, "Nhập token của bạn để xác nhận")
+    .min(3, "Mã token phải có nhiều hơn 3 ký tự"),
+  newPassword: z
+    .string()
+    .min(3, { message: "Mật khẩu phải có nhiều hơn 3 ký tự" }),
+  confirmNewPassword: z
+    .string()
+    .min(1, { message: "Nhập lại mật khẩu" })
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  path: ["confirmNewPassword"],
+  message: "Mật khẩu chưa trùng khớp"
+});
+
 
 export const DogItemSchema = z.object({
   dogName: z.string().min(3, "Tên sản phẩm nhiều hơn 3 ký tự"),
@@ -26,10 +41,21 @@ export const DogItemSchema = z.object({
   price: z.coerce.number().positive(),
   color: z.string().min(1, "Yêu cầu"),
   sex: z.enum(["male", "female"]),
+  type: z.enum(["dog", "cat"]),
   age: z.coerce.number().positive().int().max(200, "Số tháng quá lớn"),
   origin: z.string().min(1, "Yêu cầu"),
   healthStatus: z.string().min(1, "Yêu cầu"),
   description: z.string().min(1, "Yêu cầu")
+});
+
+export const GoodsSchema = z.object({
+  productName: z.string().min(3, "Tên sản phẩm nhiều hơn 3 ký tự"),
+  quantity: z.coerce.number().positive().int().max(200, "Số tháng quá lớn"),
+  price: z.coerce.number().positive(),
+  supplier: z.string().min(1, "Yêu cầu"),
+  note: z.string(),
+  phoneNumber:z.string().min(6, "Yêu cầu"),
+  address: z.string().min(1, "Yêu cầu")
 });
 
 export const ItemSchema = z.object({

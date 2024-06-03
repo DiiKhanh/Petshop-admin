@@ -11,46 +11,16 @@ export const DogItemPage = lazy(() => import("~/pages/DogItemPage"));
 export const InvoicePage = lazy(() => import("~/pages/InvoicePage"));
 export const ProfilePage = lazy(() => import("~/pages/ProfilePage"));
 export const LoginPage = lazy(() => import("~/pages/LoginPage"));
+export const ForgotPasswordPage = lazy(() => import("~/pages/ForgotPasswordPage"));
 export const Page404 = lazy(() => import("~/pages/Page404"));
 export const VoucherPage = lazy(() => import("~/pages/VoucherPage"));
 export const BookingPage = lazy(() => import("~/pages/BookingPage"));
 export const CommentPage = lazy(() => import("~/pages/CommentPage"));
+export const ImportGoodsPage = lazy(() => import("~/pages/ImportGoodsPage"));
 
 // ----------------------------------------------------------------------
 
 export default function Router() {
-  // const routes = useRoutes([
-  //   {
-  //     path: "/",
-  //     element: <Navigate to="/dashboard" replace />
-  //   },
-  //   {
-  //     path: "/dashboard",
-  //     element:
-  //     <ProtectedPage>
-  //       <DashboardLayout />
-  //     </ProtectedPage>,
-  //     children: [
-  //       { element: <Navigate to="/dashboard/app" />, index: true },
-  //       { path: "app", element: <DashboardAppPage /> },
-  //       { path: "user", element: <UserPage /> },
-  //       { path: "dog", element: <DogPage /> },
-  //       { path: "dog-item", element: <DogItemPage /> },
-  //       { path: "invoice", element: <InvoicePage /> },
-  //       { path: "profile", element: <ProfilePage /> }
-  //     ]
-  //   },
-  //   {
-  //     path: "login",
-  //     element: <LoginPage />
-  //   },
-  //   { path: "404", element: <Page404 /> },
-  //   {
-  //     path: "*",
-  //     element: <Navigate to="/404" replace />
-  //   }
-  // ]);
-
   const routes = useRoutes([
     {
       element: (
@@ -69,12 +39,17 @@ export default function Router() {
         { path: "profile", element: <ProtectedPage> <ProfilePage /> </ProtectedPage> },
         { path: "voucher", element: <ProtectedPage> <VoucherPage /> </ProtectedPage> },
         { path: "booking", element: <ProtectedPage> <BookingPage /> </ProtectedPage> },
-        { path: "comment", element: <ProtectedPage> <CommentPage /> </ProtectedPage> }
+        { path: "comment", element: <ProtectedPage> <CommentPage /> </ProtectedPage> },
+        { path: "import-goods", element: <ProtectedPage> <ImportGoodsPage /> </ProtectedPage> }
       ]
     },
     {
       path: "login",
       element: <LoginPage />
+    },
+    {
+      path: "forgot-password",
+      element: <ForgotPasswordPage />
     },
     {
       path: "404",

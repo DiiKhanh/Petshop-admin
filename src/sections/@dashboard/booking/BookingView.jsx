@@ -1,6 +1,6 @@
 import { filter } from "lodash";
 import { sentenceCase } from "change-case";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 // @mui
 import {
   Card,
@@ -17,7 +17,9 @@ import {
   Typography,
   IconButton,
   TableContainer,
-  TablePagination
+  TablePagination,
+  Box,
+  Alert
 } from "@mui/material";
 // components
 import Label from "~/components/label";
@@ -28,9 +30,9 @@ import BookingListToolbar from "./BookingListToolbar";
 import BookingListHead from "./BookingListHead";
 // mock
 
-import { toast } from "react-toastify";
-import bookingApi from "~/apis/modules/booking.api";
 import EditModal from "./EditModal";
+import { useGetAllBooking } from "./hooks/useBooking";
+import Loading from "~/components/Loading";
 
 // ----------------------------------------------------------------------
 
@@ -93,10 +95,11 @@ export default function BookingView() {
 
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  const [data, setData] = useState([]);
-
   const [openModal, setOpenModal] = useState(false);
   const [item, setItem] = useState();
+
+  // fetch data
+  const data = useGetAllBooking();
 
   const handleOpenMenu = (item) => (event) => {
     setOpen(event.currentTarget);
@@ -115,7 +118,7 @@ export default function BookingView() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = data?.map((n) => n.name);
+      const newSelecteds = data?.data?.map((n) => n.appointment_id);
       setSelected(newSelecteds);
       return;
     }
@@ -151,26 +154,9 @@ export default function BookingView() {
     setFilterName(event.target.value);
   };
 
-  useEffect(() => {
-    const getAll = async () => {
-      try {
-        const { response, err } = await bookingApi.getAll();
-        if (err) {
-          toast.error(err);
-        }
-        if (response) {
-          setData(response);
-        }
-      } catch (error) {
-        toast.error(error);
-      }
-    };
-    getAll();
-  }, [openModal]);
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data?.data?.length) : 0;
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data?.length) : 0;
-
-  const filteredUsers = applySortFilter(data, getComparator(order, orderBy), filterName);
+  const filteredUsers = applySortFilter(data?.data, getComparator(order, orderBy), filterName);
 
   const isNotFound = !filteredUsers?.length && !!filterName;
 
@@ -178,103 +164,141 @@ export default function BookingView() {
     <>
 
       <Container maxWidth="xl">
-
-
         <Card>
-          <BookingListToolbar numSelected={selected?.length} filterName={filterName} onFilterName={handleFilterByName} />
+          {
+            data.isLoading && <Box sx={{ marginTop: 2 }}>
+              <Loading />
+            </Box>
+          }
+          {
+            data.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+              <Alert severity="error" variant="outlined" >{data.error.message}</Alert>
+            </Box>
+          }
+          {
+            data.isSuccess && data?.data?.length > 0 &&
+            <>
+              <BookingListToolbar numSelected={selected?.length} filterName={filterName} onFilterName={handleFilterByName} />
 
-          <Scrollbar>
-            <TableContainer sx={{ minWidth: 800 }}>
-              <Table>
-                <BookingListHead
-                  order={order}
-                  orderBy={orderBy}
-                  headLabel={TABLE_HEAD}
-                  rowCount={data?.length}
-                  numSelected={selected.length}
-                  onRequestSort={handleRequestSort}
-                  onSelectAllClick={handleSelectAllClick}
-                />
-                <TableBody>
-                  {filteredUsers?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                    const { status, appointment_id, date, hour, phone_number, user_name, service, description, is_cancel } = row;
-                    const selectedUser = selected.indexOf(appointment_id) !== -1;
+              <Scrollbar>
+                <TableContainer sx={{ minWidth: 800 }}>
+                  <Table>
+                    <BookingListHead
+                      order={order}
+                      orderBy={orderBy}
+                      headLabel={TABLE_HEAD}
+                      rowCount={data?.data?.length}
+                      numSelected={selected.length}
+                      onRequestSort={handleRequestSort}
+                      onSelectAllClick={handleSelectAllClick}
+                    />
+                    <TableBody>
+                      {filteredUsers?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
+                        const { status, appointment_id, date, hour, phone_number, user_name, service, description, is_cancel } = row;
+                        const selectedUser = selected.indexOf(appointment_id) !== -1;
 
-                    return (
-                      <TableRow hover key={appointment_id} tabIndex={-1} role="checkbox" selected={selectedUser}>
-                        <TableCell padding="checkbox">
-                          <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, appointment_id)} />
-                        </TableCell>
+                        return (
+                          <TableRow hover key={appointment_id} tabIndex={-1} role="checkbox" selected={selectedUser}>
+                            <TableCell padding="checkbox">
+                              <Checkbox checked={selectedUser} onChange={(event) => handleClick(event, appointment_id)} />
+                            </TableCell>
 
-                        <TableCell component="th" scope="row" padding="none">
-                          <Stack direction="row" alignItems="center" spacing={2}>
+                            <TableCell component="th" scope="row" padding="none">
+                              <Stack direction="row" alignItems="center" spacing={2}>
 
-                            <Typography variant="subtitle2" noWrap>
-                              {appointment_id}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
+                                <Typography variant="subtitle2" noWrap>
+                                  {appointment_id}
+                                </Typography>
+                              </Stack>
+                            </TableCell>
 
-                        <TableCell align="left">{user_name}</TableCell>
-                        <TableCell align="left">{phone_number}</TableCell>
-                        <TableCell align="left">{service}</TableCell>
-                        <TableCell align="left">{description}</TableCell>
-                        <TableCell align="left">
-                          <Label color={(status === "Pending" && "error") || (status === "Cancelled" && "error") || "success"}>{sentenceCase(status)}</Label>
-                        </TableCell>
-                        <TableCell align="left">{date} {hour}</TableCell>
-                        <TableCell align="left">{is_cancel ? "Đã Hủy" : "Chưa Hủy"}</TableCell>
-                        <TableCell align="right">
-                          <IconButton size="large" color="inherit" onClick={handleOpenMenu(row)}>
-                            <Iconify icon={"eva:more-vertical-fill"} />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {emptyRows > 0 && (
-                    <TableRow style={{ height: 53 * emptyRows }}>
-                      <TableCell colSpan={6} />
-                    </TableRow>
-                  )}
-                </TableBody>
+                            <TableCell align="left">{user_name}</TableCell>
+                            <TableCell align="left">{phone_number}</TableCell>
+                            <TableCell align="left">{service}</TableCell>
+                            <TableCell align="left">{description}</TableCell>
+                            <TableCell align="left">
+                              <Label color={(status === "Pending" && "error") || (status === "Cancelled" && "error") || "success"}>{sentenceCase(status)}</Label>
+                            </TableCell>
+                            <TableCell align="left">{date} {hour}</TableCell>
+                            <TableCell align="left">
+                              <Label color={(is_cancel && "error") || "success"}>
+                                {is_cancel ? "Đã Hủy" : "Chưa Hủy"}
+                              </Label>
+                            </TableCell>
+                            <TableCell align="right">
+                              <IconButton size="large" color="inherit" onClick={handleOpenMenu(row)}>
+                                <Iconify icon={"eva:more-vertical-fill"} />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {emptyRows > 0 && (
+                        <TableRow style={{ height: 53 * emptyRows }}>
+                          <TableCell colSpan={6} />
+                        </TableRow>
+                      )}
+                    </TableBody>
 
-                {isNotFound && (
-                  <TableBody>
-                    <TableRow>
-                      <TableCell align="center" colSpan={6} sx={{ py: 3 }}>
-                        <Paper
-                          sx={{
-                            textAlign: "center"
-                          }}
-                        >
-                          <Typography variant="h6" paragraph>
+                    {isNotFound && (
+                      <TableBody>
+                        <TableRow>
+                          <TableCell align="center" colSpan={12} sx={{ py: 3 }}>
+                            <Paper
+                              sx={{
+                                textAlign: "center"
+                              }}
+                            >
+                              <Typography variant="h6" paragraph>
                             Not found
-                          </Typography>
+                              </Typography>
 
-                          <Typography variant="body2">
+                              <Typography variant="body2">
                             No results found for &nbsp;
-                            <strong>&quot;{filterName}&quot;</strong>.
-                            <br /> Try checking for typos or using complete words.
-                          </Typography>
-                        </Paper>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                )}
-              </Table>
-            </TableContainer>
-          </Scrollbar>
+                                <strong>&quot;{filterName}&quot;</strong>.
+                                <br /> Try checking for typos or using complete words.
+                              </Typography>
+                            </Paper>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    )}
+                  </Table>
+                </TableContainer>
+              </Scrollbar>
 
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
-            component="div"
-            count={data?.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={data?.data?.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
+            </>
+          }
+          {
+            data.isSuccess && data?.data.length === 0 && <>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell align="center" colSpan={12} sx={{ py: 3 }}>
+                      <Paper
+                        sx={{
+                          textAlign: "center"
+                        }}
+                      >
+                        <Typography variant="h6" paragraph>
+                          Chưa có thông tin Voucher
+                        </Typography>
+                      </Paper>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </>
+          }
         </Card>
       </Container>
 
@@ -297,7 +321,10 @@ export default function BookingView() {
         }}
       >
         <MenuItem sx={{ color: "error.main" }}
-          onClick={() => setOpenModal(true)}
+          onClick={() => {
+            setOpenModal(true);
+            handleCloseMenu();
+          }}
         >
           <Iconify icon={"eva:edit-2-outline"} sx={{ mr: 2 }}
           />

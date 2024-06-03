@@ -50,7 +50,7 @@ export default function ListToolbar({ numSelected, filterName, onFilterName }) {
     >
       {numSelected > 0 ? (
         <Typography component="div" variant="subtitle1">
-          {numSelected} selected
+          {numSelected} đã được chọn
         </Typography>
       ) : (
         <StyledSearch

@@ -3,7 +3,7 @@ import { useState } from "react";
 // @mui
 import { Container, Stack, Typography, Button } from "@mui/material";
 // components
-import { ProductSort, ProductList, ProductFilterSidebar, AddProductModal } from "../sections/@dashboard/dogItem";
+import { ProductSort, ProductList, ProductFilterSidebar, AddProductModal } from "~/sections/@dashboard/dogItem";
 // mock
 
 import Iconify from "~/components/iconify";
@@ -25,12 +25,12 @@ export default function DogItemPage() {
   return (
     <>
       <Helmet>
-        <title> Dog Products | Pet Shop </title>
+        <title> Products | Pet Shop </title>
       </Helmet>
 
       <Container maxWidth="xl">
         <Typography variant="h4" sx={{ mb: 5 }}>
-          Quản lý sản phẩm cho chó
+          Quản lý sản phẩm cho thú cưng
         </Typography>
 
         <Stack direction="row" flexWrap="wrap-reverse" alignItems="center" justifyContent="space-between" sx={{ mb: 5 }}>

@@ -13,7 +13,7 @@ import FormControl from "@mui/material/FormControl";
 import { toast } from "react-toastify";
 import FormLabel from "@mui/material/FormLabel";
 import Label from "~/components/label";
-import commentApi from "~/apis/modules/comment.api";
+import { useEditComment } from "./hooks/useComment";
 
 
 const style = {
@@ -34,18 +34,17 @@ export default function EditModal({ open, setOpen, item }) {
 
 
   // fetch data
+  const editComment = useEditComment(item.comment_id);
   const handleEdit = async () => {
     setIsLoading(true);
-    const { response, err } = await commentApi.update({ id: item.comment_id, isAccept: true });
+    editComment.mutateAsync({ id: item.comment_id, isAccept: true });
     setIsLoading(false);
-    if (response) {
-      toast.success("Đã phê duyệt thành công!");
-      handleClose();
-    }
-    if (err) {
-      toast.error("Có lỗi khi phê duyệt!!");
-    }
   };
+
+  if (editComment.isSuccess) {
+    toast.success("Chỉnh sửa thành công!");
+    setOpen(false);
+  }
 
   return (
     <div>

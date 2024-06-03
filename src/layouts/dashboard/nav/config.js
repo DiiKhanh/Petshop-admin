@@ -17,12 +17,17 @@ const navConfig = [
     icon: icon("ic_user")
   },
   {
-    title: "Quản lý chó",
+    title: "Quản lý nhập hàng",
+    path: "/import-goods",
+    icon: icon("ic_cart")
+  },
+  {
+    title: "Quản lý thú cưng",
     path: "/dog",
     icon: icon("ic_blog")
   },
   {
-    title: "Quản lý sản phẩm cho chó",
+    title: "Quản lý sản phẩm cho thú cưng",
     path: "/dog-item",
     icon: icon("ic_blog")
   },

@@ -23,8 +23,8 @@ import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DogItemSchema } from "~/configs/zod.config";
-import dogApi from "~/apis/modules/dog.api";
 import { toast } from "react-toastify";
+import { useCreatePet } from "./hooks/usePet";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -51,7 +51,7 @@ const style = {
   p: 4
 };
 
-const categories = [
+const categoriesDog = [
   { label: "Golden Retriever" },
   { label: "Alaska" },
   { label: "Husky" },
@@ -64,6 +64,16 @@ const categories = [
   { label: "Shiba" }
 ];
 
+const categoriesCat = [
+  { label: "Siamese" },
+  { label: "Maine Coon" },
+  { label: "Persian" },
+  { label: "Bengal" },
+  { label: "Sphynx" },
+  { label: "Munchkin" },
+  { label: "Scottish Fold" }
+];
+
 export default function AddProductModal({ open, setOpen }) {
   const handleClose = () => setOpen(false);
   const [imageUrl, setImageUrl] = useState([]);
@@ -72,11 +82,12 @@ export default function AddProductModal({ open, setOpen }) {
   const [isUpload, setIsUpload] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState([]);
+  const [type, setType] = useState("dog");
 
   const {
     register,
     formState: { errors, touchedFields },
-    handleSubmit, setValue
+    handleSubmit, setValue, reset
   } = useForm({ resolver: zodResolver(DogItemSchema) });
 
   const handleFileUpload = (e) => {
@@ -137,25 +148,19 @@ export default function AddProductModal({ open, setOpen }) {
     const links = await uploadFiles(listImg);
     if (links.length === 0) {
       toast.error("Lỗi upload ảnh!");
+      return null;
     }
+    toast.success("Upload ảnh thành công!");
     setUrl(links);
   };
+
+  const addPet = useCreatePet({ setOpen, reset, setArr });
 
   const handleAdd = async (dataForm) => {
     setIsLoading(true);
     const form = { ...dataForm, images:[...url] };
-    const { response, err } = await dogApi.addDog(form);
-    setIsLoading(false);
-    if (response) {
-      setArr([]);
-      setListImg([]);
-      toast.success("Thêm sản phẩm thành công!");
-      handleClose();
-      window.location.reload();
-    }
-    if (err) {
-      toast.error("Có lỗi khi thêm!!");
-    }
+    addPet.mutateAsync(form);
+    setIsLoading(true);
   };
 
   return (
@@ -179,9 +184,9 @@ export default function AddProductModal({ open, setOpen }) {
               <div role="presentation">
                 <Breadcrumbs aria-label="breadcrumb">
                   <Typography color="inherit" fontSize={20}>
-                  Quản lý sản phẩm
+                  Quản lý thú cưng
                   </Typography>
-                  <Typography color="text.primary" fontSize={20}>Thêm sản phẩm</Typography>
+                  <Typography color="text.primary" fontSize={20}>Nhập thú cưng</Typography>
                 </Breadcrumbs>
               </div>
               {/* bread */}
@@ -205,10 +210,27 @@ export default function AddProductModal({ open, setOpen }) {
                   fullWidth/>
 
                 <Box display="flex" alignItems="center" gap={2}>
+                  <FormControl fullWidth sx={{ flex:1 }}>
+                    <InputLabel id="demo-simple-type-label">Loại</InputLabel>
+                    <Select
+                      labelId="demo-simple-type-label"
+                      id="demo-simple-type"
+                      label="Loại"
+                      {
+                        ...register("type")
+                      }
+                      onChange={(e) => setType(e.target.value)}
+                      error={touchedFields && errors?.type?.message !== undefined}
+                      helperText={touchedFields && errors?.type?.message}
+                    >
+                      <MenuItem value="dog">Chó</MenuItem>
+                      <MenuItem value="cat">Mèo</MenuItem>
+                    </Select>
+                  </FormControl>
                   <Autocomplete
                     disablePortal
                     id="combo-box-demo"
-                    options={categories}
+                    options={type === "dog" ? categoriesDog : categoriesCat}
                     fullWidth sx={{ flex:2 }}
                     renderInput={(params) => <TextField {...params} label="Giống"
                       {

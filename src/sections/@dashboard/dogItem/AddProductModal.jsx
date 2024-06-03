@@ -18,8 +18,8 @@ import axios from "axios";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ItemSchema } from "~/configs/zod.config";
-import itemApi from "~/apis/modules/item.api";
 import { toast } from "react-toastify";
+import { useCreateItem } from "./hooks/useItem";
 
 const VisuallyHiddenInput = styled("input")({
   clip: "rect(0 0 0 0)",
@@ -58,7 +58,7 @@ export default function AddProductModal({ open, setOpen }) {
   const {
     register,
     formState: { errors, touchedFields },
-    handleSubmit, setValue
+    handleSubmit, setValue, reset
   } = useForm({ resolver: zodResolver(ItemSchema) });
 
   const handleFileUpload = (e) => {
@@ -119,26 +119,19 @@ export default function AddProductModal({ open, setOpen }) {
     const links = await uploadFiles(listImg);
     if (links.length === 0) {
       toast.error("Lỗi upload ảnh!");
+      return null;
     }
     toast.success("Upload hình ảnh thành công!");
     setUrl(links);
   };
 
+  const addItem = useCreateItem({ setOpen, reset, setArr });
+
   const handleAdd = async (dataForm) => {
     setIsLoading(true);
     const form = { ...dataForm, images:[...url] };
-    const { response, err } = await itemApi.addItem(form);
+    addItem.mutateAsync(form);
     setIsLoading(false);
-    if (response) {
-      setArr([]);
-      setListImg([]);
-      toast.success("Thêm sản phẩm thành công!");
-      handleClose();
-      window.location.reload();
-    }
-    if (err) {
-      toast.error("Có lỗi khi thêm!!");
-    }
   };
 
   return (
@@ -162,9 +155,9 @@ export default function AddProductModal({ open, setOpen }) {
               <div role="presentation">
                 <Breadcrumbs aria-label="breadcrumb">
                   <Typography color="inherit" fontSize={20}>
-                  Quản lý sản phẩm cho chó
+                  Quản lý sản phẩm thú cưng
                   </Typography>
-                  <Typography color="text.primary" fontSize={20}>Thêm sản phẩm cho chó</Typography>
+                  <Typography color="text.primary" fontSize={20}>Thêm sản phẩm</Typography>
                 </Breadcrumbs>
               </div>
               {/* bread */}
@@ -279,7 +272,7 @@ export default function AddProductModal({ open, setOpen }) {
               <Box display="flex" alignItems="center" gap={2}>
                 <LoadingButton variant="contained" loading={isLoading}
                   onClick={handleSubmit(handleAdd)}>
-                    Thêm sản phẩm
+                  Thêm sản phẩm
                 </LoadingButton>
                 <Button onClick={handleClose} variant="text" sx={{ color:"error.main" }}>
                   Hủy

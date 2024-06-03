@@ -13,16 +13,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { VoucherShema } from "~/configs/zod.config";
 import { toast } from "react-toastify";
-import { styled } from "@mui/material/styles";
-import Tooltip from "@mui/material/Tooltip";
 import { DemoContainer, DemoItem } from "@mui/x-date-pickers/internals/demo";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { fDate } from "~/utils/formatTime.js";
-import { format, isAfter, parse } from "date-fns";
+import { format } from "date-fns";
 import { NumericFormat } from "react-number-format";
-import voucherApi from "~/apis/modules/voucher.api";
+import { useCreateVoucher } from "./hooks/useVoucher";
 
 function Label({ componentName }) {
   const content = (
@@ -84,20 +81,12 @@ export default function AddVoucherModal({ open, setOpen }) {
     handleSubmit, setValue, reset
   } = useForm({ resolver: zodResolver(VoucherShema) });
 
+  const addVoucher = useCreateVoucher({ setOpen, reset });
 
   const handleAdd = async (dataForm) => {
     setIsLoading(true);
-    const { response, err } = await voucherApi.addVoucher({ ...dataForm, start_date: format(startDate, "MM dd yyyy"), end_date: format(endDate, "MM dd yyyy") });
+    addVoucher.mutateAsync({ ...dataForm, start_date: format(startDate, "MM dd yyyy"), end_date: format(endDate, "MM dd yyyy") });
     setIsLoading(false);
-    if (response && response.status === 201) {
-      toast.success("Thêm sản phẩm thành công!");
-      handleClose();
-      reset();
-      window.location.reload();
-    }
-    if (err || response.error) {
-      toast.error("Có lỗi khi thêm!!");
-    }
   };
 
   return (

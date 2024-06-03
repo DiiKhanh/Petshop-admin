@@ -56,7 +56,7 @@ export default function BookingListToolbar({ numSelected, filterName, onFilterNa
         <StyledSearch
           value={filterName}
           onChange={onFilterName}
-          placeholder="Tìm kiếm lịch khám ..."
+          placeholder="Tìm kiếm bình luận ..."
           startAdornment={
             <InputAdornment position="start">
               <Iconify icon="eva:search-fill" sx={{ color: "text.disabled", width: 20, height: 20 }} />

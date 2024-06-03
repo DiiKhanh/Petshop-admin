@@ -1,5 +1,5 @@
 import { filter } from "lodash";
-import { useEffect, useState } from "react";
+import React, { useState } from "react";
 // @mui
 import {
   Card,
@@ -20,7 +20,13 @@ import {
   TablePagination,
   Box,
   Alert,
-  Button
+  Button,
+  Dialog,
+  DialogActions,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  Slide
 } from "@mui/material";
 // components
 import Label from "~/components/label";
@@ -30,15 +36,19 @@ import Scrollbar from "~/components/scrollbar";
 import { ProductListHead, ProductModal, EditProductModal } from "~/sections/@dashboard/dog";
 import ListToolbar from "./ListToolbar";
 import { valueLabelFormat } from "~/utils/formatNumber";
-import dogApi from "~/apis/modules/dog.api";
-import { toast } from "react-toastify";
 import { fDateTime } from "~/utils/formatTime";
 import { CSVLink } from "react-csv";
+import { useDeletePet, useGetAllPet } from "./hooks/usePet";
+import Loading from "~/components/Loading";
 
 // ----------------------------------------------------------------------
+const Transition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
 
 const TABLE_HEAD = [
   { id: "product", label: "Tên sản phẩm", alignRight: false },
+  { id: "type", label: "Loại", alignRight: false },
   { id: "category", label: "Giống", alignRight: false },
   { id: "price", label: "Giá", alignRight: false },
   { id: "create_at", label: "Ngày tạo", alignRight: false },
@@ -66,8 +76,8 @@ function getComparator(order, orderBy) {
 }
 
 function applySortFilter(array, comparator, query) {
-  const stabilizedThis = array.map((el, index) => [el, index]);
-  stabilizedThis.sort((a, b) => {
+  const stabilizedThis = array?.map((el, index) => [el, index]);
+  stabilizedThis?.sort((a, b) => {
     const order = comparator(a[0], b[0]);
     if (order !== 0) return order;
     return a[1] - b[1];
@@ -75,56 +85,24 @@ function applySortFilter(array, comparator, query) {
   if (query) {
     return filter(array, (_dog) => _dog.dogName.toLowerCase().indexOf(query.toLowerCase()) !== -1);
   }
-  return stabilizedThis.map((el) => el[0]);
+  return stabilizedThis?.map((el) => el[0]);
 }
 
 export default function ProductList() {
   const [open, setOpen] = useState(null);
-
   const [page, setPage] = useState(0);
-
   const [order, setOrder] = useState("asc");
-
   const [selected, setSelected] = useState([]);
-
   const [orderBy, setOrderBy] = useState("name");
-
   const [filterName, setFilterName] = useState("");
-
   const [rowsPerPage, setRowsPerPage] = useState(5);
-
   const [selectId, setSelectId] = useState(null);
-
   const [openModal, setOpenModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openConfirm, setOpenConfirm] = useState(false);
 
-  const [dogs, setDogs] = useState([]);
-  const [error, setError] = useState(null);
-
-  const getAll = async () => {
-    try {
-      const { response, err } = await dogApi.getAllDog();
-      if (response) {
-        setDogs(response);
-      }
-      if (err) {
-        toast.error(err);
-        setError(err);
-      }
-    }
-    catch (error) {
-      toast.error(error);
-      setError(error);
-    }
-  };
-
-  useEffect(() => {
-    getAll();
-  }, []);
-
-  useEffect(() => {
-    getAll();
-  }, [openModal, openEditModal]);
+  // react-query
+  const newData = useGetAllPet();
 
 
   const handleOpenMenu = (id) => (event) => {
@@ -144,7 +122,7 @@ export default function ProductList() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelecteds = dogs.map((n) => n.dogName);
+      const newSelecteds = newData?.data?.map((n) => n.dogName);
       setSelected(newSelecteds);
       return;
     }
@@ -180,32 +158,33 @@ export default function ProductList() {
     setFilterName(event.target.value);
   };
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - dogs.length) : 0;
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - newData?.data?.length) : 0;
 
-  const filteredDogs = applySortFilter(dogs, getComparator(order, orderBy), filterName);
+  const filteredDogs = applySortFilter(newData?.data, getComparator(order, orderBy), filterName);
 
-  const isNotFound = !filteredDogs.length && !!filterName;
+  const isNotFound = !filteredDogs?.length && !!filterName;
 
+  const deletePet = useDeletePet();
   const handleSoftDelete = async (id) => {
-    const { response, err } = await dogApi.deleteDog({ id });
-    if (response) {
-      toast.success("Xóa thành công!");
-      getAll();
-    }
-    if (err) {
-      toast.error("Có lỗi xảy ra!");
-    }
+    deletePet.mutateAsync(id);
   };
 
   return (
     <>
       <Container maxWidth="xl">
         <Card>
-          {error && <Box sx={{ marginTop: 2 }}>
-            <Alert severity="error" variant="outlined" >{error}</Alert>
-          </Box>}
           {
-            dogs.length > 0 && <>
+            newData.isLoading && <Box sx={{ marginTop: 2 }}>
+              <Loading />
+            </Box>
+          }
+          {
+            newData.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+              <Alert severity="error" variant="outlined" >{newData.error.message}</Alert>
+            </Box>
+          }
+          {
+            newData.isSuccess && newData?.data?.length > 0 && <>
               <ListToolbar numSelected={selected.length} filterName={filterName} onFilterName={handleFilterByName} />
               <Scrollbar>
                 <TableContainer sx={{ minWidth: 800 }}>
@@ -214,14 +193,14 @@ export default function ProductList() {
                       order={order}
                       orderBy={orderBy}
                       headLabel={TABLE_HEAD}
-                      rowCount={dogs?.length}
+                      rowCount={newData?.data?.length}
                       numSelected={selected.length}
                       onRequestSort={handleRequestSort}
                       onSelectAllClick={handleSelectAllClick}
                     />
                     <TableBody>
                       {filteredDogs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => {
-                        const { dogItemId, dogName, images, dogSpeciesName, price, createAt,
+                        const { dogItemId, dogName, images, dogSpeciesName, price, createAt, type,
                           updatedAt, isDeleted, isInStock } = row;
                         const selectedDog = selected.indexOf(dogName) !== -1;
                         return (
@@ -241,6 +220,7 @@ export default function ProductList() {
                               </Stack>
                             </TableCell>
 
+                            <TableCell align="left">{type === "dog" ? "Chó" : "Mèo"}</TableCell>
                             <TableCell align="left">{dogSpeciesName}</TableCell>
                             <TableCell align="left">{price > 0 ? `${valueLabelFormat(price)}` : "0"}</TableCell>
 
@@ -276,7 +256,7 @@ export default function ProductList() {
                     {isNotFound && (
                       <TableBody>
                         <TableRow>
-                          <TableCell align="center" colSpan={6} sx={{ py: 3 }}>
+                          <TableCell align="center" colSpan={12} sx={{ py: 3 }}>
                             <Paper
                               sx={{
                                 textAlign: "center"
@@ -303,7 +283,7 @@ export default function ProductList() {
               <TablePagination
                 rowsPerPageOptions={[5, 10, 25]}
                 component="div"
-                count={dogs.length}
+                count={newData?.data.length}
                 rowsPerPage={rowsPerPage}
                 page={page}
                 onPageChange={handleChangePage}
@@ -311,8 +291,53 @@ export default function ProductList() {
               />
             </>
           }
+          {
+            newData.isSuccess && newData?.data.length === 0 && <>
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    <TableCell align="center" colSpan={12} sx={{ py: 3 }}>
+                      <Paper
+                        sx={{
+                          textAlign: "center"
+                        }}
+                      >
+                        <Typography variant="h6" paragraph>
+                              Chưa có thông tin thú cưng
+                        </Typography>
+                      </Paper>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </>
+          }
         </Card>
       </Container>
+      {/* dialog confirm */}
+      <React.Fragment>
+        <Dialog
+          open={openConfirm}
+          TransitionComponent={Transition}
+          keepMounted
+          onClose={() => setOpenConfirm(false)}
+          aria-describedby="alert-dialog-slide-description"
+        >
+          <DialogTitle>{"Xác nhận xóa"}</DialogTitle>
+          <DialogContent>
+            <DialogContentText id="alert-dialog-slide-description">
+            Bạn có chắc chắn muốn xóa?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => {
+              setOpenConfirm(false);
+              handleSoftDelete(selectId); }
+            } color="error">Xóa</Button>
+            <Button onClick={() => setOpenConfirm(false)}>Hủy</Button>
+          </DialogActions>
+        </Dialog>
+      </React.Fragment>
 
       <Popover
         open={Boolean(open)}
@@ -332,17 +357,26 @@ export default function ProductList() {
           }
         }}
       >
-        <MenuItem onClick={() => setOpenModal(true)}>
+        <MenuItem onClick={() => {
+          setOpenModal(true);
+          handleCloseMenu();
+        }}>
           <Iconify icon={"eva:eye-outline"} sx={{ mr: 2 }} />
           Xem
         </MenuItem>
 
-        <MenuItem onClick={() => setOpenEditModal(true)}>
+        <MenuItem onClick={() => {
+          setOpenEditModal(true);
+          handleCloseMenu();
+        }}>
           <Iconify icon={"eva:edit-fill"} sx={{ mr: 2 }} />
           Chỉnh sửa
         </MenuItem>
 
-        <MenuItem sx={{ color: "error.main" }} onClick={() => handleSoftDelete(selectId)}>
+        <MenuItem sx={{ color: "error.main" }} onClick={() => {
+          setOpenConfirm(true);
+          handleCloseMenu();
+        }}>
           <Iconify icon={"eva:trash-2-outline"} sx={{ mr: 2 }} />
           Xóa
         </MenuItem>
@@ -354,16 +388,22 @@ export default function ProductList() {
       {
         openEditModal && <EditProductModal open={openEditModal} setOpen={setOpenEditModal} id={selectId} />
       }
-      <Button color="warning" variant="outlined">
-        <CSVLink
-          data={dogs}
-          filename={"my-dog.csv"}
-
-          target="_blank"
+      {
+        newData.isSuccess && newData?.data.length > 0 && <Button color="warning" variant="outlined"
+          sx={{
+            mt:4
+          }}
         >
-          Export file excel
-        </CSVLink>
-      </Button>
+          <CSVLink
+            data={newData?.data}
+            filename={"my-pet.csv"}
+            target="_blank"
+            style={{ textDecorationLine:"none" }}
+          >
+          Export file Excel
+          </CSVLink>
+        </Button>
+      }
     </>
   );
 }

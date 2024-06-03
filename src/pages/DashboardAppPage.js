@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
 // @mui
 import { useTheme } from "@mui/material/styles";
-import { Grid, Container, Typography } from "@mui/material";
+import { Grid, Container, Typography, Box, Alert } from "@mui/material";
 // components
 // sections
 import {
@@ -9,78 +9,140 @@ import {
   AppWebsiteVisits,
   AppWidgetSummary,
   AppCurrentSubject,
-  AppConversionRates
+  AppConversionRates,
+  AppNewsUpdate,
+  AppOrderTimeline,
+  AppTrafficBySite,
+  AppTasks
 } from "../sections/@dashboard/app";
+import { faker } from "@faker-js/faker";
+import Iconify from "~/components/iconify";
+import { useDashboardInvoice, useGetAllDashboard } from "~/hooks/dashboard/useDashboard";
+import Loading from "~/components/Loading";
+import { DemoContainer, DemoItem } from "@mui/x-date-pickers/internals/demo";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { useState } from "react";
+import { format } from "date-fns";
+
 
 // ----------------------------------------------------------------------
+function Label({ componentName }) {
+  const content = (
+    <span>
+      <strong>{componentName}</strong>
+    </span>
+  );
+  return content;
+}
 
 export default function DashboardAppPage() {
   const theme = useTheme();
+  const data = useGetAllDashboard();
+
+  const [day, setDay] = useState(new Date());
+
+  const getInvoice = useDashboardInvoice();
+  const handleDay = async (date) => {
+    setDay(date);
+    const value = format(date, "MM dd yyyy");
+    getInvoice.mutateAsync({ date: value });
+  };
+
   return (
     <>
       <Helmet>
         <title> Dashboard | Pet Shop </title>
       </Helmet>
 
+      {
+        data.isLoading && <Box sx={{ marginTop: 2 }}>
+          <Loading />
+        </Box>
+      }
+      {
+        data.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+          <Alert severity="error" variant="outlined" >{data.error.message}</Alert>
+        </Box>
+      }
+      {
+        data.isSuccess && data?.data &&
       <Container maxWidth="xl">
         <Typography variant="h4" sx={{ mb: 5 }}>
           Xin chào!
         </Typography>
 
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <AppWidgetSummary title="Sản phẩm" total={714000} icon={"openmoji:dog-face"} />
+          <Grid item xs={12} sm={6} md={2}>
+            <AppWidgetSummary title="Số lượng Pet" total={data?.data?.totalPet} icon={"openmoji:dog-face"} />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <AppWidgetSummary title="Người dùng" total={1352831} color="info" icon={"ant-design:usergroup-add-outlined"} />
+          <Grid item xs={12} sm={6} md={2}>
+            <AppWidgetSummary title="Số lượng sản phẩm" total={data?.data?.totalProduct} icon={"tabler:dog-bowl"} />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <AppWidgetSummary title="Hóa đơn" total={1723315} color="warning" icon={"lets-icons:order-fill"} />
+          <Grid item xs={12} sm={6} md={2}>
+            <AppWidgetSummary title="Người dùng" total={data?.data?.totalUser} color="info" icon={"ant-design:usergroup-add-outlined"} />
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <AppWidgetSummary title="Doanh thu" total={234} color="error" icon={"carbon:summary-kpi"} />
+          <Grid item xs={12} sm={6} md={2}>
+            <AppWidgetSummary title="Hóa đơn" total={data?.data?.totalInvoice} color="warning" icon={"lets-icons:order-fill"} />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={2}>
+            <AppWidgetSummary title="Phiếu giảm giá" total={data?.data?.totalVoucher} color="warning" icon={"mdi:voucher-outline"} />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={2}>
+            <AppWidgetSummary title="Doanh thu" total={data?.data?.totalMoney} color="error" icon={"carbon:summary-kpi"} />
           </Grid>
 
           <Grid item xs={12} md={6} lg={8}>
             <AppWebsiteVisits
-              title="Website Visits"
-              chartLabels={[
-                "01/01/2023",
-                "02/01/2023",
-                "03/01/2023",
-                "04/01/2023",
-                "05/01/2023",
-                "06/01/2023",
-                "07/01/2023",
-                "08/01/2023",
-                "09/01/2023",
-                "10/01/2023",
-                "11/01/2023"
-              ]}
+              title="Thống kê hóa đơn"
+              chartLabels={data?.data?.checkoutData?.map(i => ((i?.createAt)))}
               chartData={[
                 {
-                  name: "Miền Trung",
+                  name: "Khách hàng",
                   type: "column",
                   fill: "solid",
-                  data: [23, 11, 22, 27, 13, 22, 37, 21, 44, 22, 30]
-                },
-                {
-                  name: "Miền Nam",
-                  type: "area",
-                  fill: "gradient",
-                  data: [44, 55, 41, 67, 22, 43, 21, 41, 56, 27, 43]
-                },
-                {
-                  name: "Miền Bắc",
-                  type: "line",
-                  fill: "solid",
-                  data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39]
+                  data: data?.data?.checkoutData?.map(i => i.total)
                 }
               ]}
             />
+          </Grid>
+
+          <Grid item xs={12} md={6} lg={8}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DemoContainer
+                components={[
+                  "DatePicker"
+                ]}
+              >
+                <DemoItem label={<Label componentName="Chọn thời gian"/>}>
+                  <DatePicker
+                    value={day}
+                    onChange={handleDay}
+                  />
+                </DemoItem>
+
+              </DemoContainer>
+            </LocalizationProvider>
+            {
+              getInvoice.data && <AppWebsiteVisits
+                title="Thống kê hóa đơn theo ngày"
+                chartLabels={[getInvoice.data.date]}
+                chartData={[
+                  {
+                    name: "Khách hàng",
+                    type: "column",
+                    fill: "solid",
+                    data: [getInvoice.data.totalAmount]
+                  }
+                ]}
+              />
+            }
           </Grid>
 
           <Grid item xs={12} md={6} lg={4}>
@@ -125,7 +187,7 @@ export default function DashboardAppPage() {
             />
           </Grid>
 
-          {/* <Grid item xs={12} md={6} lg={8}>
+          <Grid item xs={12} md={6} lg={8}>
             <AppNewsUpdate
               title="News Update"
               list={[...Array(5)].map((_, index) => ({
@@ -136,9 +198,9 @@ export default function DashboardAppPage() {
                 postedAt: faker.date.recent()
               }))}
             />
-          </Grid> */}
+          </Grid>
 
-          {/* <Grid item xs={12} md={6} lg={4}>
+          <Grid item xs={12} md={6} lg={4}>
             <AppOrderTimeline
               title="Order Timeline"
               list={[...Array(5)].map((_, index) => ({
@@ -154,9 +216,9 @@ export default function DashboardAppPage() {
                 time: faker.date.past()
               }))}
             />
-          </Grid> */}
+          </Grid>
 
-          {/* <Grid item xs={12} md={6} lg={4}>
+          <Grid item xs={12} md={6} lg={4}>
             <AppTrafficBySite
               title="Traffic by Site"
               list={[
@@ -182,9 +244,9 @@ export default function DashboardAppPage() {
                 }
               ]}
             />
-          </Grid> */}
+          </Grid>
 
-          {/* <Grid item xs={12} md={6} lg={8}>
+          <Grid item xs={12} md={6} lg={8}>
             <AppTasks
               title="Tasks"
               list={[
@@ -195,9 +257,10 @@ export default function DashboardAppPage() {
                 { id: "5", label: "Sprint Showcase" }
               ]}
             />
-          </Grid> */}
+          </Grid>
         </Grid>
       </Container>
+      }
     </>
   );
 }

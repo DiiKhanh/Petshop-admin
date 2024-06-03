@@ -8,7 +8,7 @@ import Stack from "@mui/material/Stack";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { styled } from "@mui/material/styles";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import ImageList from "@mui/material/ImageList";
 import ImageListItem from "@mui/material/ImageListItem";
 import LoadingButton from "@mui/lab/LoadingButton";
@@ -16,7 +16,6 @@ import TextField from "@mui/material/TextField";
 import FormControl from "@mui/material/FormControl";
 import { NumericFormat } from "react-number-format";
 import axios from "axios";
-import itemApi from "~/apis/modules/item.api";
 import { toast } from "react-toastify";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +25,9 @@ import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Label from "~/components/label";
+import { useEditItem, useGetItem } from "./hooks/useItem";
+import Loading from "~/components/Loading";
+import { Alert } from "@mui/material";
 
 
 const VisuallyHiddenInput = styled("input")({
@@ -68,22 +70,12 @@ export default function EditProductModal({ open, setOpen, id }) {
 
   const {
     register,
-    formState: { errors, touchedFields },
+    formState: { errors, touchedFields, isDirty },
     handleSubmit, setValue
   } = useForm({ resolver: zodResolver(ItemSchema) });
 
   // fetch data
-  const getDog = useCallback(async() => { const { response, err } = await itemApi.getItem({ id });
-    if (response) {
-      setData(response);
-    }
-    if (err) {
-      toast.error(err);
-    }}, [id]);
-
-  useEffect(() => {
-    getDog();
-  }, [getDog]);
+  const item = useGetItem(id);
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -108,9 +100,9 @@ export default function EditProductModal({ open, setOpen, id }) {
     setListImg(filterList);
   };
   const handleOnImageRemoveClickData = (index) => {
-    const updatedImages = [...data.images];
+    const updatedImages = [...item.data.images];
     updatedImages.splice(index, 1);
-    setData({ ...data, images: updatedImages });
+    setData({ ...item.data, images: updatedImages });
   };
   const materialUITextFieldProps = {
     label: "Giá tiền",
@@ -151,9 +143,11 @@ export default function EditProductModal({ open, setOpen, id }) {
     if (links.length === 0) {
       toast.error("Lỗi upload ảnh!");
     }
+    toast.success("Upload thành công!");
     setUrl(links);
   };
 
+  const editItem = useEditItem(id);
 
   const handleEdit = async (dataForm) => {
     setIsLoading(true);
@@ -173,19 +167,20 @@ export default function EditProductModal({ open, setOpen, id }) {
       isInStock = false;
     }
 
-    const form = { ...dataForm, id, images:[...data.images, ...url], isDeleted, isInStock };
-    const { response, err } = await itemApi.editItem(form);
+    let form;
+    if (data?.images) {
+      form = { ...dataForm, id, images:[...data.images, ...url], isDeleted, isInStock };
+    } else {
+      form = { ...dataForm, id, images:[...item.data.images, ...url], isDeleted, isInStock };
+    }
+    editItem.mutateAsync(form);
     setIsLoading(false);
-    if (response) {
-      setData(response);
-      setArr([]);
-      setListImg([]);
-      toast.success("Chỉnh sửa thành công!");
-    }
-    if (err) {
-      toast.error("Có lỗi khi chỉnh sửa!!");
-    }
   };
+
+  if (editItem.isSuccess) {
+    toast.success("Chỉnh sửa thành công!");
+    setOpen(false);
+  }
 
   return (
     <div>
@@ -204,24 +199,34 @@ export default function EditProductModal({ open, setOpen, id }) {
         <Fade in={open}>
           <Box sx={style}>
             {
-              data && <Stack spacing={3}>
+              item.isLoading && <Box sx={{ marginTop: 2 }}>
+                <Loading />
+              </Box>
+            }
+            {
+              item.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+                <Alert severity="error" variant="outlined" >{item.error.message}</Alert>
+              </Box>
+            }
+            {
+              item.isSuccess && item.data && <Stack spacing={3}>
                 {/* bread */}
                 <div role="presentation">
                   <Breadcrumbs aria-label="breadcrumb">
                     <Typography color="inherit" fontSize={20}>
-                  Quản lý sản phẩm cho chó
+                  Quản lý sản phẩm thú cưng
                     </Typography>
-                    <Typography color="text.primary" fontSize={20}>Chỉnh sửa sản phẩm cho chó</Typography>
+                    <Typography color="text.primary" fontSize={20}>Chỉnh sửa sản phẩm</Typography>
                     <Typography color="inherit" fontSize={20}>
                       ID - {id}
                     </Typography>
                     <FormLabel sx={{ fontWeight:"bold", fontSize:"20px" }}>
                     Tình trạng:
-                      <Label color={data?.isDeleted ? "error" : !(data?.isInStock) ? "warning" : "success"} sx={{ ml:"10px", fontSize:"16px" }}>
+                      <Label color={item?.data?.isDeleted ? "error" : !(item?.data?.isInStock) ? "warning" : "success"} sx={{ ml:"10px", fontSize:"20px" }}>
                         {
-                          data?.isDeleted ? "Bị xóa" : "Có sẵn"
+                          item?.data?.isDeleted ? "Bị xóa" : "Có sẵn"
                         } / {
-                          data?.isInStock ? "Còn hàng" : "Hết hàng"
+                          item?.data?.isInStock ? "Còn hàng" : "Hết hàng"
                         }
                       </Label>
                     </FormLabel>
@@ -249,13 +254,13 @@ export default function EditProductModal({ open, setOpen, id }) {
                       }
                       error={touchedFields && errors?.itemName?.message !== undefined}
                       helperText={touchedFields && errors?.itemName?.message}
-                      defaultValue={data?.itemName}
+                      defaultValue={item?.data?.itemName}
                       fullWidth
                     />
                   </FormControl>
 
                   <Box display="flex" alignItems="center" gap={2}>
-                    <TextField label="Loại" variant="outlined" defaultValue={data?.category}
+                    <TextField label="Loại" variant="outlined" defaultValue={item?.data?.category}
                       fullWidth sx={{ flex:2, shrink:true }}
                       {
                         ...register("category")
@@ -273,7 +278,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                       {...materialUITextFieldProps}
                       fullWidth
                       sx={{ shrink:true }}
-                      defaultValue={data?.price}
+                      defaultValue={item?.data?.price}
                       onValueChange={(values) => {
                         const { floatValue } = values;
                         // do something with floatValue
@@ -288,7 +293,7 @@ export default function EditProductModal({ open, setOpen, id }) {
 
                     <TextField label="Số lượng" variant="outlined"
                       sx={{ width:"400px", shrink:true }}
-                      defaultValue={+data?.quantity}
+                      defaultValue={+item?.data?.quantity}
                       {
                         ...register("quantity")
                       }
@@ -302,7 +307,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                     multiline
                     rows={3}
                     variant="outlined"
-                    defaultValue={data?.description}
+                    defaultValue={item?.data?.description}
                     {
                       ...register("description")
                     }
@@ -341,8 +346,8 @@ export default function EditProductModal({ open, setOpen, id }) {
                 </Button>
                 <Box display="flex" alignItems="center" justifyContent="start">
                   {
-                    data?.images?.length > 0 && <ImageList sx={{ width: 500, height: 200 }} cols={3} rowHeight={200}>
-                      {data?.images?.map((item, index) => (
+                    item?.data?.images?.length > 0 && <ImageList sx={{ width: 500, height: 200 }} cols={3} rowHeight={200}>
+                      {item?.data?.images?.map((item, index) => (
                         <React.Fragment key={item}>
                           <ImageListItem >
                             <img
@@ -387,7 +392,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                 {/* action btn */}
                 <Box display="flex" alignItems="center" gap={2}>
                   <LoadingButton variant="contained" loading={isLoading}
-                    onClick={handleSubmit(handleEdit)}
+                    onClick={handleSubmit(handleEdit)} disabled={!isDirty}
                   >Chỉnh sửa sản phẩm</LoadingButton>
                   <Button onClick={handleClose} variant="text" sx={{ color:"error.main" }}>
                   Hủy

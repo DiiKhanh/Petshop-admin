@@ -8,7 +8,7 @@ import Stack from "@mui/material/Stack";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { styled } from "@mui/material/styles";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import ImageList from "@mui/material/ImageList";
 import ImageListItem from "@mui/material/ImageListItem";
 import LoadingButton from "@mui/lab/LoadingButton";
@@ -20,7 +20,6 @@ import Select from "@mui/material/Select";
 import { NumericFormat } from "react-number-format";
 import Autocomplete from "@mui/material/Autocomplete";
 import axios from "axios";
-import dogApi from "~/apis/modules/dog.api";
 import { toast } from "react-toastify";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +29,9 @@ import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Label from "~/components/label";
+import { useEditPet, useGetPet } from "./hooks/usePet";
+import { Alert } from "@mui/material";
+import Loading from "~/components/Loading";
 
 
 const VisuallyHiddenInput = styled("input")({
@@ -57,7 +59,7 @@ const style = {
   p: 4
 };
 
-const categories = [
+const categoriesDog = [
   { label: "Golden Retriever" },
   { label: "Alaska" },
   { label: "Husky" },
@@ -68,6 +70,16 @@ const categories = [
   { label: "Poodle" },
   { label: "Chihuahua" },
   { label: "Shiba" }
+];
+
+const categoriesCat = [
+  { label: "Siamese" },
+  { label: "Maine Coon" },
+  { label: "Persian" },
+  { label: "Bengal" },
+  { label: "Sphynx" },
+  { label: "Munchkin" },
+  { label: "Scottish Fold" }
 ];
 
 
@@ -84,24 +96,17 @@ export default function EditProductModal({ open, setOpen, id }) {
   const [isLoading, setIsLoading] = useState(false);
   const [radio, setRadio] = useState("");
 
+  const [type, setType] = useState("dog");
+
+  // fetch
+  const dog = useGetPet(id);
+
   const {
     register,
-    formState: { errors, touchedFields },
+    formState: { errors, touchedFields, isDirty },
     handleSubmit, setValue
   } = useForm({ resolver: zodResolver(DogItemSchema) });
 
-  // fetch data
-  const getDog = useCallback(async() => { const { response, err } = await dogApi.getDogByIdAdmin({ id });
-    if (response) {
-      setData(response);
-    }
-    if (err) {
-      toast.error(err);
-    }}, [id]);
-
-  useEffect(() => {
-    getDog();
-  }, [getDog]);
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -126,9 +131,9 @@ export default function EditProductModal({ open, setOpen, id }) {
     setListImg(filterList);
   };
   const handleOnImageRemoveClickData = (index) => {
-    const updatedImages = [...data.images];
+    const updatedImages = [...dog.data.images];
     updatedImages.splice(index, 1);
-    setData({ ...data, images: updatedImages });
+    setData({ ...dog.data, images: updatedImages });
   };
   const materialUITextFieldProps = {
     label: "Giá tiền",
@@ -169,8 +174,11 @@ export default function EditProductModal({ open, setOpen, id }) {
     if (links.length === 0) {
       toast.error("Lỗi upload ảnh!");
     }
+    toast.success("Upload thành công!");
     setUrl(links);
   };
+
+  const editPet = useEditPet(id);
 
 
   const handleEdit = async (dataForm) => {
@@ -190,20 +198,21 @@ export default function EditProductModal({ open, setOpen, id }) {
       isDeleted = true;
       isInStock = false;
     }
+    let form;
+    if (data?.images) {
+      form = { ...dataForm, id, images:[...data.images, ...url], isDeleted, isInStock };
 
-    const form = { ...dataForm, id, images:[...data.images, ...url], isDeleted, isInStock };
-    const { response, err } = await dogApi.editDogById(form);
+    } else {
+      form = { ...dataForm, id, images:[...dog.data.images, ...url], isDeleted, isInStock };
+    }
+    editPet.mutateAsync(form);
     setIsLoading(false);
-    if (response) {
-      setData(response);
-      setArr([]);
-      setListImg([]);
-      toast.success("Chỉnh sửa thành công!");
-    }
-    if (err) {
-      toast.error("Có lỗi khi chỉnh sửa!!");
-    }
   };
+
+  if (editPet.isSuccess) {
+    toast.success("Chỉnh sửa thành công!");
+    setOpen(false);
+  }
 
   return (
     <div>
@@ -222,24 +231,34 @@ export default function EditProductModal({ open, setOpen, id }) {
         <Fade in={open}>
           <Box sx={style}>
             {
-              data && <Stack spacing={3}>
+              dog.isLoading && <Box sx={{ marginTop: 2 }}>
+                <Loading />
+              </Box>
+            }
+            {
+              dog.error instanceof Error && <Box sx={{ marginTop: 2 }}>
+                <Alert severity="error" variant="outlined" >{dog.error.message}</Alert>
+              </Box>
+            }
+            {
+              dog.isSuccess && dog.data && <Stack spacing={3}>
                 {/* bread */}
                 <div role="presentation">
                   <Breadcrumbs aria-label="breadcrumb">
                     <Typography color="inherit" fontSize={20}>
-                  Quản lý sản phẩm
+                  Quản lý thú cưng
                     </Typography>
-                    <Typography color="text.primary" fontSize={20}>Chỉnh sửa sản phẩm</Typography>
+                    <Typography color="text.primary" fontSize={20}>Chỉnh sửa thú cưng</Typography>
                     <Typography color="inherit" fontSize={20}>
                       ID - {id}
                     </Typography>
                     <FormLabel sx={{ fontWeight:"bold", fontSize:"20px" }}>
                     Tình trạng:
-                      <Label color={data?.isDeleted ? "error" : !(data?.isInStock) ? "warning" : "success"} sx={{ ml:"10px", fontSize:"16px" }}>
+                      <Label color={dog.data?.isDeleted ? "error" : !(dog.data?.isInStock) ? "warning" : "success"} sx={{ ml:"10px", fontSize:"16px" }}>
                         {
-                          data?.isDeleted ? "Bị xóa" : "Có sẵn"
+                          dog.data?.isDeleted ? "Bị xóa" : "Có sẵn"
                         } / {
-                          data?.isInStock ? "Còn hàng" : "Hết hàng"
+                          dog.data?.isInStock ? "Còn hàng" : "Hết hàng"
                         }
                       </Label>
                     </FormLabel>
@@ -257,29 +276,52 @@ export default function EditProductModal({ open, setOpen, id }) {
                   flexDirection="column"
                   gap={2}
                 >
-                  <FormControl>
-                    <FormLabel sx={{ mb:"10px", fontWeight:"bold" }}>
-                    Tên sản phẩm:
-                    </FormLabel>
-                    <TextField variant="outlined"
-                      {
-                        ...register("dogName")
-                      }
-                      error={touchedFields && errors?.dogName?.message !== undefined}
-                      helperText={touchedFields && errors?.dogName?.message}
-                      defaultValue={data?.dogName}
-                      fullWidth
-                    />
-                  </FormControl>
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <FormControl sx={{ flex: 2 }}>
+                      <FormLabel sx={{ mb:"10px", fontWeight:"bold" }}>
+                    Tên thú cưng:
+                      </FormLabel>
+                      <TextField variant="outlined"
+                        {
+                          ...register("dogName")
+                        }
+                        error={touchedFields && errors?.dogName?.message !== undefined}
+                        helperText={touchedFields && errors?.dogName?.message}
+                        defaultValue={dog.data?.dogName}
+                        fullWidth
+                      />
+                    </FormControl>
+                    <FormControl fullWidth sx={{ flex:1, shrink:true }}>
+                      <FormLabel sx={{ mb:"10px", fontWeight:"bold" }}>
+                    Loại:
+                      </FormLabel>
+                      <Select
+                        labelId="demo-simple-type-label"
+                        id="demo-simple-type"
+                        label="Loại"
+                        {
+                          ...register("type")
+                        }
+                        defaultValue={dog.data?.type}
+                        onChange={(e) => setType(e.target.value)}
+                        error={touchedFields && errors?.type?.message !== undefined}
+                        helperText={touchedFields && errors?.type?.message}
+                      >
+                        <MenuItem value="dog">Chó</MenuItem>
+                        <MenuItem value="cat">Mèo</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Box>
 
                   <Box display="flex" alignItems="center" gap={2}>
                     <Autocomplete
                       disablePortal
                       id="combo-box-demo"
-                      options={categories}
+                      options={type === "dog" ? categoriesDog : categoriesCat}
                       fullWidth sx={{ flex:2 }}
-                      defaultValue={data?.dogSpeciesName}
+                      defaultValue={dog.data?.dogSpeciesName}
                       renderInput={(params) => <TextField {...params} label="Giống"
+                        name="speciesName"
                         {
                           ...register("speciesName")
                         }
@@ -288,7 +330,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                       />}
                     />
 
-                    <TextField label="Màu sắc" variant="outlined" defaultValue={data?.color}
+                    <TextField label="Màu sắc" variant="outlined" defaultValue={dog.data?.color}
                       fullWidth sx={{ flex:2, shrink:true }}
                       {
                         ...register("color")
@@ -302,7 +344,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                         labelId="demo-simple-select-label"
                         id="demo-simple-select"
                         label="Giới tính"
-                        defaultValue={data?.sex}
+                        defaultValue={dog.data?.sex}
                         {
                           ...register("sex")
                         }
@@ -323,10 +365,9 @@ export default function EditProductModal({ open, setOpen, id }) {
                       {...materialUITextFieldProps}
                       fullWidth
                       sx={{ shrink:true }}
-                      defaultValue={data?.price}
+                      defaultValue={dog.data?.price}
                       onValueChange={(values) => {
                         const { floatValue } = values;
-                        // do something with floatValue
                         setValue("price", floatValue);
                       }}
                       {
@@ -338,7 +379,7 @@ export default function EditProductModal({ open, setOpen, id }) {
 
                     <TextField label="Nguồn gốc" variant="outlined"
                       sx={{ shrink:true }}
-                      defaultValue={data?.origin}
+                      defaultValue={dog.data?.origin}
                       {
                         ...register("origin")
                       }
@@ -347,7 +388,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                       fullWidth/>
                     <TextField label="Tháng tuổi" variant="outlined"
                       sx={{ width:"400px", shrink:true }}
-                      defaultValue={+data?.age}
+                      defaultValue={+dog.data?.age}
                       {
                         ...register("age")
                       }
@@ -357,7 +398,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                   </Box>
 
                   <TextField label="Tình trạng sức khỏe" variant="outlined"
-                    defaultValue={data?.healthStatus}
+                    defaultValue={dog.data?.healthStatus}
                     {
                       ...register("healthStatus")
                     }
@@ -370,7 +411,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                     multiline
                     rows={3}
                     variant="outlined"
-                    defaultValue={data?.description}
+                    defaultValue={dog.data?.description}
                     {
                       ...register("description")
                     }
@@ -385,8 +426,7 @@ export default function EditProductModal({ open, setOpen, id }) {
                       aria-labelledby="demo-row-radio-buttons-group-label"
                       name="row-radio-buttons-group"
                       onChange={(e) => setRadio(e.currentTarget.value)}
-                      def
-
+                      defaultValue={dog?.data?.isDeleted ? "stockdelete" : "stock"}
                     >
                       <FormControlLabel value="stock" control={<Radio />} label="Có sẵn / Còn hàng" />
                       <FormControlLabel value="notstock" control={<Radio />} label="Có sẵn / Hết hàng" />
@@ -409,8 +449,8 @@ export default function EditProductModal({ open, setOpen, id }) {
                 </Button>
                 <Box display="flex" alignItems="center" justifyContent="start">
                   {
-                    data?.images?.length > 0 && <ImageList sx={{ width: 500, height: 200 }} cols={3} rowHeight={200}>
-                      {data?.images?.map((item, index) => (
+                    dog.data?.images?.length > 0 && <ImageList sx={{ width: 500, height: 200 }} cols={3} rowHeight={200}>
+                      {dog.data?.images?.map((item, index) => (
                         <React.Fragment key={item}>
                           <ImageListItem >
                             <img
@@ -455,8 +495,8 @@ export default function EditProductModal({ open, setOpen, id }) {
                 {/* action btn */}
                 <Box display="flex" alignItems="center" gap={2}>
                   <LoadingButton variant="contained" loading={isLoading}
-                    onClick={handleSubmit(handleEdit)}
-                  >Chỉnh sửa sản phẩm</LoadingButton>
+                    onClick={handleSubmit(handleEdit)} disabled={!isDirty}
+                  >Chỉnh sửa thú cưng</LoadingButton>
                   <Button onClick={handleClose} variant="text" sx={{ color:"error.main" }}>
                   Hủy
                   </Button>

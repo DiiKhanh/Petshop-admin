@@ -39,14 +39,14 @@ const dogApi = {
       return { err };}
   },
   editDogById: async ({ id, dogName, speciesName, price, color, origin,
-    healthStatus, description, sex, images, age, isDeleted, isInStock
+    healthStatus, description, sex, images, age, isDeleted, isInStock, type
   }) => {
     try {
       const response = await privateClient.put(
         endpoints.editDogById({ id }),
         {
           dogName, speciesName, price, color, origin,
-          healthStatus, description, sex, images, age, isDeleted, isInStock
+          healthStatus, description, sex, images, age, isDeleted, isInStock, type
         }
       );
       return { response };
@@ -54,14 +54,14 @@ const dogApi = {
       return { err };}
   },
   addDog: async ({ dogName, speciesName, price, color, origin,
-    healthStatus, description, sex, images, age
+    healthStatus, description, sex, images, age, type
   }) => {
     try {
       const response = await privateClient.post(
         endpoints.add,
         {
           dogName, speciesName, price, color, origin,
-          healthStatus, description, sex, images, age
+          healthStatus, description, sex, images, age, type
         }
       );
       return { response };
