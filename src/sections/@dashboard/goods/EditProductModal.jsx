@@ -29,7 +29,7 @@ import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Label from "~/components/label";
-// import { useEditPet, useGetPet } from "./hooks/usePet";
+import { useEditPet, useGetPet } from "./hooks/usePet";
 import { Alert } from "@mui/material";
 import Loading from "~/components/Loading";
 
@@ -142,9 +142,9 @@ export default function EditProductModal({ open, setOpen, id }) {
   // cloudinary
   const uploadFiles = async (files) => {
     if (!files) return;
-    const CLOUD_NAME = "du36crm0k";
-    const PRESET_NAME = "petshop-upload";
-    const FOLDER_NAME = "PetShop";
+    const CLOUD_NAME = import.meta.env.VITE_CLOUD_NAME;
+    const PRESET_NAME = import.meta.env.VITE_PRESET_NAME;
+    const FOLDER_NAME = import.meta.env.VITE_FOLDER_NAME;
     const urls = [];
     const api = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 

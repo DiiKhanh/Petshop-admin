@@ -119,9 +119,9 @@ export default function AddProductModal({ open, setOpen }) {
   // cloudinary
   const uploadFiles = async (files) => {
     if (!files) return;
-    const CLOUD_NAME = "du36crm0k";
-    const PRESET_NAME = "petshop-upload";
-    const FOLDER_NAME = "PetShop";
+    const CLOUD_NAME = import.meta.env.VITE_CLOUD_NAME;
+    const PRESET_NAME = import.meta.env.VITE_PRESET_NAME;
+    const FOLDER_NAME = import.meta.env.VITE_FOLDER_NAME;
     const urls = [];
     const api = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
